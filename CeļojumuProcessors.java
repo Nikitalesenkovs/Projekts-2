@@ -4,7 +4,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class TripProcessor {
-    private static final String FILE_NAME = "ceļojumi.csv";
+    private static final String FILE_NAME = "db.csv";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Scanner SCANNER = new Scanner(System.in);
 
