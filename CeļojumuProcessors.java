@@ -1,221 +1,227 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.text.DecimalFormat;
+import java.io.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Scanner;
-import java.util.stream.Collectors;
+import java.util.*;
 
-public class CeļojumuProcessors {
-    private static final String FAILA_NOSAUKUMS = "db.csv";
-    private static final DateTimeFormatter DATUMA_FORMATĒTĀJS = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DecimalFormat CENAS_FORMATĒTĀJS = new DecimalFormat("#.##");
+public class TripProcessor {
+    private static final String FILE_NAME = "ceļojumi.csv";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final Scanner SCANNER = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Scanner skeneris = new Scanner(System.in);
+        createFileIfNotExists();
 
         while (true) {
-            System.out.println("\n1. Apskatīt faila saturu");
+            System.out.println("\nCeļojumu aģentūras sistēma:");
+            System.out.println("1. Apskatīt ceļojumus");
             System.out.println("2. Pievienot jaunu ceļojumu");
-            System.out.println("3. Izdzēst ceļojuma informāciju");
+            System.out.println("3. Izdzēst ceļojumu");
             System.out.println("4. Labot ceļojuma informāciju");
-            System.out.println("5. Sakārtot ceļojumus pēc datuma");
-            System.out.println("6. Atrast ceļojumus ar norādīto cenu");
+            System.out.println("5. Sakārtot ceļojumus pēc datumiem");
+            System.out.println("6. Atrast ceļojumus pēc cenas");
             System.out.println("7. Aprēķināt ceļojumu vidējo cenu");
             System.out.println("8. Iziet");
 
-            System.out.print("Ievadiet savu izvēli: ");
-            String izvēle = skeneris.nextLine();
+            System.out.print("Ievadiet izvēli: ");
+            String choice = SCANNER.nextLine();
 
-            switch (izvēle) {
+            switch (choice) {
                 case "1":
-                    apskatītFailaSaturu();
+                    showTrips();
                     break;
                 case "2":
-                    pievienotCeļojumu();
+                    addTrip();
                     break;
                 case "3":
-                    izdzēstCeļojumu();
+                    deleteTrip();
                     break;
                 case "4":
-                    labotCeļojumu();
+                    editTrip();
                     break;
                 case "5":
-                    sakārtotCeļojumusPēcDatuma();
+                    sortTripsByDate();
                     break;
                 case "6":
-                    atrastCeļojumusArCenu();
+                    findTripsByPrice();
                     break;
                 case "7":
-                    aprēķinātCeļojumuVidējoCenu();
+                    calculateAveragePrice();
                     break;
                 case "8":
-                    System.out.println("Izejam no programmas.");
-                    skeneris.close();
+                    System.out.println("Programma tiek izbeigta.");
+                    SCANNER.close();
                     return;
                 default:
-                    System.out.println("Nederīga izvēle. Lūdzu, ievadiet skaitli no 1 līdz 8.");
+                    System.out.println("Nepareiza izvēle. Lūdzu, ievadiet skaitli no 1 līdz 8.");
             }
         }
     }
 
-    private static void apskatītFailaSaturu() {
-        try (BufferedReader lasītājs = new BufferedReader(new FileReader(FAILA_NOSAUKUMS))) {
-            String rinda;
-            while ((rinda = lasītājs.readLine()) != null) {
-                System.out.println(rinda);
+    private static void createFileIfNotExists() {
+        try {
+            File file = new File(FILE_NAME);
+            if (!file.exists()) {
+                file.createNewFile();
             }
         } catch (IOException e) {
-            System.out.println("Kļūda lasot failu: " + e.getMessage());
+            System.out.println("Kļūda, neizdevās izveidot datņu failu: " + e.getMessage());
         }
     }
 
-    private static void pievienotCeļojumu() {
-        try (BufferedWriter rakstītājs = new BufferedWriter(new FileWriter(FAILA_NOSAUKUMS, true))) {
-            Scanner skeneris = new Scanner(System.in);
+    private static void showTrips() {
+        try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (IOException e) {
+            System.out.println("Kļūda, neizdevās nolasīt datņu failu: " + e.getMessage());
+        }
+    }
 
-            System.out.print("Ievadiet ceļojuma identifikatoru: ");
-            String id = skeneris.nextLine();
-
-            System.out.print("Ievadiet pilsētu: ");
-            String pilsēta = skeneris.nextLine();
-
-            System.out.print("Ievadiet datumu (dd/MM/gggg): ");
-            String datumaStr = skeneris.nextLine();
-            LocalDate datums = LocalDate.parse(datumaStr, DATUMA_FORMATĒTĀJS);
-
-            System.out.print("Ievadiet dienu skaitu: ");
-            int dienas = Integer.parseInt(skeneris.nextLine());
-
-            System.out.print("Ievadiet cenu: ");
-            double cena = Double.parseDouble(skeneris.nextLine());
-
-            System.out.print("Ievadiet transporta veidu: ");
-            String transports = skeneris.nextLine();
-
-            rakstītājs.write(String.format("%s;%s;%s;%d;%.2f;%s%n", id, pilsēta, datums.format(DATUMA_FORMATĒTĀJS), dienas, cena, transports));
+    private static void addTrip() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME, true))) {
+            System.out.print("Ievadiet ceļojuma informāciju (identifikators;pilsēta;dd/MM/yyyy;dienas;cena;transporta veids): ");
+            String tripInfo = SCANNER.nextLine();
+            writer.write(tripInfo + "\n");
             System.out.println("Ceļojums veiksmīgi pievienots.");
         } catch (IOException e) {
-            System.out.println("Kļūda rakstot failā: " + e.getMessage());
+            System.out.println("Kļūda, neizdevās pievienot ceļojumu: " + e.getMessage());
         }
     }
 
-    private static void izdzēstCeļojumu() {
-        Scanner skeneris = new Scanner(System.in);
-        System.out.print("Ievadiet ceļojuma identifikatoru, ko izdzēst: ");
-        String idIzdzēst = skeneris.nextLine();
-
+    private static void deleteTrip() {
         try {
-            List<String> rindiņas = Files.lines(new File(FAILA_NOSAUKUMS).toPath())
-                    .filter(rinda -> !rinda.startsWith(idIzdzēst + ";"))
-                    .collect(Collectors.toList());
-
-            Files.write(new File(FAILA_NOSAUKUMS).toPath(), rindiņas);
-            System.out.println("Ceļojums veiksmīgi izdzēsts.");
-        } catch (IOException e) {
-            System.out.println("Kļūda dzēšot ceļojumu: " + e.getMessage());
-        }
-    }
-
-    private static void labotCeļojumu() {
-        Scanner skeneris = new Scanner(System.in);
-        System.out.print("Ievadiet ceļojuma identifikatoru, ko labot: ");
-        String idLabot = skeneris.nextLine();
-
-        try {
-            List<String> rindiņas = Files.lines(new File(FAILA_NOSAUKUMS).toPath())
-                    .map(rinda -> {
-                        if (rinda.startsWith(idLabot + ";")) {
-                            String[] daļas = rinda.split(";");
-                            System.out.print("Ievadiet jauno pilsētu: ");
-                            String jaunāPilsēta = skeneris.nextLine();
-                            System.out.print("Ievadiet jauno datumu (dd/MM/gggg): ");
-                            String jaunaisDatumsStr = skeneris.nextLine();
-                            LocalDate jaunaisDatums = LocalDate.parse(jaunaisDatumsStr, DATUMA_FORMATĒTĀJS);
-                            System.out.print("Ievadiet jauno dienu skaitu: ");
-                            int jaunāsDienas = Integer.parseInt(skeneris.nextLine());
-                            System.out.print("Ievadiet jauno cenu: ");
-                            double jaunāCena = Double.parseDouble(skeneris.nextLine());
-                            System.out.print("Ievadiet jauno transporta veidu: ");
-                            String jaunaisTransports = skeneris.nextLine();
-
-                            return String.format("%s;%s;%s;%d;%.2f;%s", daļas[0], jaunāPilsēta, jaunaisDatums.format(DATUMA_FORMATĒTĀJS), jaunāsDienas, jaunāCena, jaunaisTransports);
-                        }
-                        return rinda;
-                    })
-                    .collect(Collectors.toList());
-
-            Files.write(new File(FAILA_NOSAUKUMS).toPath(), rindiņas);
-            System.out.println("Ceļojuma informācija veiksmīgi labota.");
-        } catch (IOException e) {
-            System.out.println("Kļūda labojot ceļojumu: " + e.getMessage());
-        }
-    }
-
-    private static void sakārtotCeļojumusPēcDatuma() {
-        try {
-            List<String> rindiņas = Files.lines(new File(FAILA_NOSAUKUMS).toPath())
-                    .sorted(Comparator.comparing(rinda -> LocalDate.parse(rinda.split(";")[2], DATUMA_FORMATĒTĀJS)))
-                    .collect(Collectors.toList());
-
-            Files.write(new File(FAILA_NOSAUKUMS).toPath(), rindiņas);
-            System.out.println("Ceļojumi sakārtoti pēc datuma veiksmīgi.");
-        } catch (IOException e) {
-            System.out.println("Kļūda sakārtojot ceļojumus pēc datuma: " + e.getMessage());
-        }
-    }
-
-    private static void atrastCeļojumusArCenu() {
-        Scanner skeneris = new Scanner(System.in);
-        System.out.print("Ievadiet maksimālo cenu: ");
-        double maksimālāCena = Double.parseDouble(skeneris.nextLine());
-
-        try (BufferedReader lasītājs = new BufferedReader(new FileReader(FAILA_NOSAUKUMS))) {
-            String rinda;
-            boolean atrasts = false;
-            while ((rinda = lasītājs.readLine()) != null) {
-                String[] daļas = rinda.split(";");
-                if (Double.parseDouble(daļas[4]) <= maksimālāCena) {
-                    System.out.println(rinda);
-                    atrasts = true;
+            List<String> trips = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    trips.add(line);
                 }
             }
-            if (!atrasts) {
+            System.out.print("Ievadiet ceļojuma identifikatoru, ko izdzēst: ");
+            String tripIdToDelete = SCANNER.nextLine();
+            boolean found = false;
+            for (int i = 0; i < trips.size(); i++) {
+                if (trips.get(i).startsWith(tripIdToDelete + ";")) {
+                    trips.remove(i);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME))) {
+                    for (String trip : trips) {
+                        writer.write(trip + "\n");
+                    }
+                    System.out.println("Ceļojums veiksmīgi izdzēsts.");
+                }
+            } else {
+                System.out.println("Ceļojums ar norādīto identifikatoru nav atrasts.");
+            }
+        } catch (IOException e) {
+            System.out.println("Kļūda, neizdevās dzēst ceļojumu: " + e.getMessage());
+        }
+    }
+
+    private static void editTrip() {
+        try {
+            List<String> trips = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    trips.add(line);
+                }
+            }
+            System.out.print("Ievadiet ceļojuma identifikatoru, ko labot: ");
+            String tripIdToEdit = SCANNER.nextLine();
+            boolean found = false;
+            for (int i = 0; i < trips.size(); i++) {
+                if (trips.get(i).startsWith(tripIdToEdit + ";")) {
+                    System.out.print("Ievadiet jauno ceļojuma informāciju (pilsēta;dd/MM/yyyy;dienas;cena;transporta veids): ");
+                    String newTripInfo = SCANNER.nextLine();
+                    trips.set(i, tripIdToEdit + ";" + newTripInfo);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME))) {
+                    for (String trip : trips) {
+                        writer.write(trip + "\n");
+                    }
+                    System.out.println("Ceļojuma informācija veiksmīgi labota.");
+                }
+            } else {
+                System.out.println("Ceļojums ar norādīto identifikatoru nav atrasts.");
+            }
+        } catch (IOException e) {
+            System.out.println("Kļūda, neizdevās labot ceļojuma informāciju: " + e.getMessage());
+        }
+    }
+
+    private static void sortTripsByDate() {
+        try {
+            List<String> trips = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    trips.add(line);
+                }
+            }
+            Collections.sort(trips, Comparator.comparing(trip -> LocalDate.parse(trip.split(";")[2], DATE_FORMATTER)));
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME))) {
+                for (String trip : trips) {
+                    writer.write(trip + "\n");
+                }
+                System.out.println("Ceļojumi sakārtoti pēc datuma veiksmīgi.");
+            }
+        } catch (IOException e) {
+            System.out.println("Kļūda, neizdevās sakārtot ceļojumus pēc datuma: " + e.getMessage());
+        }
+    }
+
+    private static void findTripsByPrice() {
+        System.out.print("Ievadiet maksimālo ceļojuma cenu: ");
+        double maxPrice = Double.parseDouble(SCANNER.nextLine());
+        try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+            String line;
+            boolean found = false;
+            while ((line = reader.readLine()) != null) {
+                String[] tripParts = line.split(";");
+                double price = Double.parseDouble(tripParts[4]);
+                if (price <= maxPrice) {
+                    System.out.println(line);
+                    found = true;
+                }
+            }
+            if (!found) {
                 System.out.println("Nav atrasti ceļojumi ar norādīto cenu.");
             }
         } catch (IOException e) {
-            System.out.println("Kļūda lasot failu: " + e.getMessage());
+            System.out.println("Kļūda, neizdevās atrast ceļojumus pēc cenas: " + e.getMessage());
         }
     }
 
-    private static void aprēķinātCeļojumuVidējoCenu() {
-        try (BufferedReader lasītājs = new BufferedReader(new FileReader(FAILA_NOSAUKUMS))) {
-            String rinda;
-            double kopsavilkums = 0;
-            int skaits = 0;
-            while ((rinda = lasītājs.readLine()) != null) {
-                String[] daļas = rinda.split(";");
-                kopsavilkums += Double.parseDouble(daļas[4]);
-                skaits++;
+    private static void calculateAveragePrice() {
+        try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+            String line;
+            double total = 0;
+            int count = 0;
+            while ((line = reader.readLine()) != null) {
+                String[] tripParts = line.split(";");
+                double price = Double.parseDouble(tripParts[4]);
+                total += price;
+                count++;
             }
-            if (skaits > 0) {
-                double vidējā = kopsavilkums / skaits;
-                System.out.println("Ceļojumu vidējā cena: " + CENAS_FORMATĒTĀJS.format(vidējā));
+            if (count > 0) {
+                double average = total / count;
+                System.out.println("Vidējā ceļojuma cena: " + String.format("%.2f", average));
             } else {
                 System.out.println("Nav atrasti ceļojumi, lai aprēķinātu vidējo cenu.");
             }
         } catch (IOException e) {
-            System.out.println("Kļūda lasot failu: " + e.getMessage());
+            System.out.println("Kļūda, neizdevās aprēķināt vidējo ceļojuma cenu: " + e.getMessage());
         }
     }
 }
